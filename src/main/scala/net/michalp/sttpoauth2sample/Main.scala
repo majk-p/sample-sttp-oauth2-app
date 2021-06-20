@@ -19,45 +19,45 @@ import sttp.tapir.server.http4s.Http4sServerInterpreter
 import scala.concurrent.ExecutionContext
 import cats.effect.IO
 
-
 object Main extends IOApp {
-  
-  def routes(router: OAuthRouter[IO]): HttpRoutes[IO] = 
+
+  def routes(router: OAuthRouter[IO]): HttpRoutes[IO] =
     Http4sServerInterpreter
       .toRoutes(
         List(
           OAuthEndpoints.loginRedirect.serverLogic(_ => router.loginRedirect.map(_.asRight[Unit])),
-          OAuthEndpoints.postLogin.serverLogic(data => (router.handleLogin _).tupled(data).map(_.asRight[Unit])),
+          OAuthEndpoints.postLogin.serverLogic(data => (router.handleLogin _).tupled(data).map(_.asRight[Unit]))
         )
       )
 
   val port = 8080
   val host = "localhost"
 
-  def authorizationCodeProvider(implicit backend: SttpBackend[IO, Any]): AuthorizationCodeProvider[Uri, IO] = 
+  def authorizationCodeProvider(config: ConfigReader.Config)(implicit backend: SttpBackend[IO, Any]): AuthorizationCodeProvider[Uri, IO] =
     AuthorizationCodeProvider.uriInstance[IO](
       baseUrl = Uri.unsafeParse("https://github.com/"),
       redirectUri = Uri.unsafeParse("http://localhost:8080/api/post-login"),
-      clientId = "ede227125df096ff0c59",
-      clientSecret = Secret("SECRET"),
+      clientId = config.appId,
+      clientSecret = Secret(config.appSecret),
       pathsConfig = AuthorizationCodeProvider.Config.GitHub
     )
 
-  def runServer(host: String, port: Int)(routes: HttpRoutes[IO])(ec: ExecutionContext) = 
+  def runServer(host: String, port: Int)(routes: HttpRoutes[IO])(ec: ExecutionContext) =
     BlazeServerBuilder[IO](ec)
       .bindHttp(port, host)
       .withHttpApp(Router("/" -> routes).orNotFound)
       .resource
 
   val program: Resource[IO, Unit] = for {
-    implicit0(blocker: Blocker) <- Blocker[IO]
+    implicit0(blocker: Blocker)              <- Blocker[IO]
+    config                                   <- Resource.eval(ConfigReader.readConfig[IO])
     implicit0(backend: SttpBackend[IO, Any]) <- AsyncHttpClientCatsBackend.resource[IO]()
-    implicit0(provider: AuthorizationCodeProvider[Uri, IO]) = authorizationCodeProvider(backend)
+    implicit0(provider: AuthorizationCodeProvider[Uri, IO]) = authorizationCodeProvider(config)(backend)
     oauthRoutes = routes(OAuthRouter.instance)
-    _ <- runServer(host, port)(oauthRoutes)(executionContext)
-    _ <- Resource.eval(IO(println(s"Server listening on http://$host:$port")))
+    _                                        <- runServer(host, port)(oauthRoutes)(executionContext)
+    _                                        <- Resource.eval(IO(println(s"Server listening on http://$host:$port")))
   } yield ()
- 
-  override def run(args: List[String]): IO[ExitCode] = 
+
+  override def run(args: List[String]): IO[ExitCode] =
     program.use(_ => IO.never).as(ExitCode.Success)
 }

@@ -53,6 +53,7 @@ object Main extends IOApp {
     config                                   <- Resource.eval(ConfigReader.readConfig[IO])
     implicit0(backend: SttpBackend[IO, Any]) <- AsyncHttpClientCatsBackend.resource[IO]()
     implicit0(provider: AuthorizationCodeProvider[Uri, IO]) = authorizationCodeProvider(config)(backend)
+    implicit0(github: Github[IO]) = Github.sttpInstance[IO]
     oauthRoutes = routes(OAuthRouter.instance)
     _                                        <- runServer(host, port)(oauthRoutes)(executionContext)
     _                                        <- Resource.eval(IO(println(s"Server listening on http://$host:$port")))

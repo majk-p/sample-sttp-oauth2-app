@@ -1,9 +1,10 @@
 ThisBuild / scalaVersion     := "2.13.6"
 ThisBuild / version          := "0.1.0-SNAPSHOT"
-ThisBuild / organization     := "com.example"
-ThisBuild / organizationName := "example"
+ThisBuild / organization     := "net.michalp"
+ThisBuild / organizationName := "majk-p"
 
 addCompilerPlugin("org.typelevel" % "kind-projector" % "0.13.0" cross CrossVersion.full)
+addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
 
 val compilerOptions = Seq(
   scalacOptions ++= Seq(
@@ -16,9 +17,10 @@ val compilerOptions = Seq(
 val Versions = new {
   val Cats = "2.3.0"
   val CatsEffect = "2.5.1"
-  val Tapir = "0.18.0-M11"
-  val Sttp = "3.2.3"
-  val SttpOAuth2 = "0.9.0"
+  val Tapir = "0.18.0-M15"
+  val Sttp = "3.3.6"
+  val SttpOAuth2 = "0.10.0"
+  val GithubGraphQL = "0.9.5-2"
 }
 
 val Dependencies = new {
@@ -28,7 +30,7 @@ val Dependencies = new {
   )
 
   private val catsEffect = Seq(
-    "org.typelevel" %% "cats-effect-kernel" % Versions.CatsEffect
+    "org.typelevel" %% "cats-effect" % Versions.CatsEffect
   )
 
   private val tapir = Seq(
@@ -37,15 +39,19 @@ val Dependencies = new {
   )
 
   private val sttp = Seq(
-    "com.softwaremill.sttp.client3" %% "http4s-backend" % Versions.Sttp
+    "com.softwaremill.sttp.client3" %% "async-http-client-backend-cats-ce2" % Versions.Sttp
   )
 
   private val sttpOAuth2 = Seq(
     "com.ocadotechnology" %% "sttp-oauth2" % Versions.SttpOAuth2
   )
 
+  private val githubGraphQL = Seq(
+    "io.github.er1c" %% "caliban-github-api-client" % Versions.GithubGraphQL
+  )
+
   val appDependencies = 
-    cats ++ catsEffect ++ tapir ++ sttp ++ sttpOAuth2
+    cats ++ catsEffect ++ tapir ++ sttp ++ sttpOAuth2 ++ githubGraphQL
 }
 
 lazy val root = (project in file("."))

@@ -1,49 +1,26 @@
 package net.michalp.sttpoauth2sample
 
 import cats.effect._
-import sttp.capabilities.fs2.Fs2Streams
-import sttp.client3.http4s._
-import sttp.client3._
+import cats.syntax.all._
+import com.ocadotechnology.sttp.oauth2.AuthorizationCodeProvider
+import com.ocadotechnology.sttp.oauth2.AuthorizationCodeProvider.{Config => PathsConfig}
+import com.ocadotechnology.sttp.oauth2.Secret
 import org.http4s.HttpRoutes
 import org.http4s.server.Router
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.syntax.kleisli._
+import sttp.capabilities.fs2.Fs2Streams
+import sttp.client3._
+import sttp.client3.asynchttpclient.cats.AsyncHttpClientCatsBackend
+import sttp.model.Uri
 import sttp.tapir._
 import sttp.tapir.server.http4s.Http4sServerInterpreter
-import cats.syntax.all._
 
 import scala.concurrent.ExecutionContext
-import sttp.model.Uri
-import com.ocadotechnology.sttp.oauth2.AuthorizationCodeProvider
-import com.ocadotechnology.sttp.oauth2.AuthorizationCodeProvider.{Config => PathsConfig}
-import com.ocadotechnology.sttp.oauth2.Secret
-object Endpoints {
+import cats.effect.IO
 
-  val helloWorld: Endpoint[String, Unit, String, Any] =
-    endpoint.get.in("hello").in(query[String]("name")).out(stringBody)
 
-}
-
-object Handlers {
-
-  def helloWorld(name: String) =
-    IO(s"Hello, $name!".asRight[Unit]) 
-  
-  
-}
-
-object Main extends App {
-
-  implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
-  
-  // TODO: should be possible to get rid of those in CE3
-  implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
-  implicit val timer: Timer[IO] = IO.timer(ec)
-
-  
-  val helloWorldRoutes: HttpRoutes[IO] = 
-    Http4sServerInterpreter
-      .toRoutes(Endpoints.helloWorld)(Handlers.helloWorld)
+object Main extends IOApp {
   
   def routes(router: OAuthRouter[IO]): HttpRoutes[IO] = 
     Http4sServerInterpreter
@@ -54,33 +31,33 @@ object Main extends App {
         )
       )
 
-  // starting the server
-
   val port = 8080
   val host = "localhost"
 
-  // Http4sBackend.usingDefaultBlazeClientBuilder()
-
-  implicit val authorizationCodeProvider: AuthorizationCodeProvider[Uri, IO] = 
+  def authorizationCodeProvider(implicit backend: SttpBackend[IO, Any]): AuthorizationCodeProvider[Uri, IO] = 
     AuthorizationCodeProvider.uriInstance[IO](
       baseUrl = Uri.unsafeParse("https://github.com/"),
-      Uri.unsafeParse("http://localhost:9000/api/post-login"),
-      Secret( "your-github-secret-here"),
-      PathsConfig(
-        loginPath = PathsConfig.Path(List(PathsConfig.Segment("oauth2"), PathsConfig.Segment("login"))),
-        logoutPath = PathsConfig.Path(List(PathsConfig.Segment("logout"))),
-        tokenPath = PathsConfig.Path(List(PathsConfig.Segment("oauth2"), PathsConfig.Segment("token")))
-      )
+      redirectUri = Uri.unsafeParse("http://localhost:8080/api/post-login"),
+      clientId = "ede227125df096ff0c59",
+      clientSecret = Secret("SECRET"),
+      pathsConfig = AuthorizationCodeProvider.Config.GitHub
     )
-  // val router = OAuthRouter.instance[IO]
-  BlazeServerBuilder[IO](ec)
-    .bindHttp(port, host)
-    .withHttpApp(Router("/" -> helloWorldRoutes).orNotFound)
-    .resource
-    .use { _ =>
-      IO {
-        println(s"Server listening on http://$host:$port")
-      }.flatMap(_ => IO.never)
-    }
-    .unsafeRunSync()
+
+  def runServer(host: String, port: Int)(routes: HttpRoutes[IO])(ec: ExecutionContext) = 
+    BlazeServerBuilder[IO](ec)
+      .bindHttp(port, host)
+      .withHttpApp(Router("/" -> routes).orNotFound)
+      .resource
+
+  val program: Resource[IO, Unit] = for {
+    implicit0(blocker: Blocker) <- Blocker[IO]
+    implicit0(backend: SttpBackend[IO, Any]) <- AsyncHttpClientCatsBackend.resource[IO]()
+    implicit0(provider: AuthorizationCodeProvider[Uri, IO]) = authorizationCodeProvider(backend)
+    oauthRoutes = routes(OAuthRouter.instance)
+    _ <- runServer(host, port)(oauthRoutes)(executionContext)
+    _ <- Resource.eval(IO(println(s"Server listening on http://$host:$port")))
+  } yield ()
+ 
+  override def run(args: List[String]): IO[ExitCode] = 
+    program.use(_ => IO.never).as(ExitCode.Success)
 }

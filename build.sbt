@@ -17,6 +17,7 @@ val compilerOptions = Seq(
 val Versions = new {
   val Cats = "2.3.0"
   val CatsEffect = "2.5.1"
+  val Circe = "0.14.1"
   val Tapir = "0.18.0-M15"
   val Sttp = "3.3.6"
   val SttpOAuth2 = "0.10.0"
@@ -31,6 +32,10 @@ val Dependencies = new {
 
   private val catsEffect = Seq(
     "org.typelevel" %% "cats-effect" % Versions.CatsEffect
+  )
+
+  private val circe = Seq(
+    "io.circe" %% "circe-generic" % Versions.Circe
   )
 
   private val tapir = Seq(
@@ -51,7 +56,7 @@ val Dependencies = new {
   )
 
   val appDependencies = 
-    cats ++ catsEffect ++ tapir ++ sttp ++ sttpOAuth2 ++ githubGraphQL
+    cats ++ catsEffect ++ circe ++ tapir ++ sttp ++ sttpOAuth2 ++ githubGraphQL
 }
 
 lazy val root = (project in file("."))

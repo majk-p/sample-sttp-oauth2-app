@@ -31,11 +31,15 @@ object OAuthRouter {
       }.pure[F]
 
     def handleLogin(code: AuthorizationCode, state: State): F[String] = for {
-      _               <- Sync[F].delay(println(s"Returning user for state: $state"))
-      tokenResponse   <- AuthorizationCodeProvider[Uri, F].authCodeToToken[OAuth2TokenResponse](code.value)
-      _               <- Sync[F].delay(println(s"Requesting description for https://github.com/majk-p/sample-sttp-oauth2-app/"))
-      repoDescription <- Github[F].repositoryDescription(tokenResponse.accessToken)("majk-p", "sample-sttp-oauth2-app")
-    } yield repoDescription
+      _             <- Sync[F].delay(println(s"Returning user for state: $state"))
+      tokenResponse <- AuthorizationCodeProvider[Uri, F].authCodeToToken[OAuth2TokenResponse](code.value)
+      _             <- Sync[F].delay(println(s"Requesting user info"))
+      userInfo      <- Github[F].userInfo(tokenResponse.accessToken).recoverWith{
+        case e: Exception => 
+          e.printStackTrace()
+          Sync[F].raiseError(e)
+      }
+    } yield userInfo.toString()
 
   }
 

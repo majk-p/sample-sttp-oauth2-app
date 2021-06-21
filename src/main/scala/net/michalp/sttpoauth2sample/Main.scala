@@ -30,21 +30,18 @@ object Main extends IOApp {
         )
       )
 
-  val port = 8080
-  val host = "localhost"
-
   def authorizationCodeProvider(config: ConfigReader.Config)(implicit backend: SttpBackend[IO, Any]): AuthorizationCodeProvider[Uri, IO] =
     AuthorizationCodeProvider.uriInstance[IO](
-      baseUrl = Uri.unsafeParse("https://github.com/"),
-      redirectUri = Uri.unsafeParse("http://localhost:8080/api/post-login"),
-      clientId = config.appId,
-      clientSecret = Secret(config.appSecret),
+      baseUrl = config.oauth2.baseUrl,
+      redirectUri = Uri.unsafeParse(s"http://${config.server.host}:${config.server.port}/api/post-login"),
+      clientId = config.oauth2.appId,
+      clientSecret = Secret(config.oauth2.appSecret),
       pathsConfig = AuthorizationCodeProvider.Config.GitHub
     )
 
-  def runServer(host: String, port: Int)(routes: HttpRoutes[IO])(ec: ExecutionContext) =
+  def runServer(serverConfig: ConfigReader.Config.Server)(routes: HttpRoutes[IO])(ec: ExecutionContext) =
     BlazeServerBuilder[IO](ec)
-      .bindHttp(port, host)
+      .bindHttp(serverConfig.port, serverConfig.host)
       .withHttpApp(Router("/" -> routes).orNotFound)
       .resource
 
@@ -55,8 +52,8 @@ object Main extends IOApp {
     implicit0(provider: AuthorizationCodeProvider[Uri, IO]) = authorizationCodeProvider(config)(backend)
     implicit0(github: Github[IO]) = Github.sttpInstance[IO]
     oauthRoutes = routes(OAuthRouter.instance)
-    _                                        <- runServer(host, port)(oauthRoutes)(executionContext)
-    _                                        <- Resource.eval(IO(println(s"Server listening on http://$host:$port")))
+    _                                        <- runServer(config.server)(oauthRoutes)(executionContext)
+    _                                        <- Resource.eval(IO(println(s"Server listening on http://${config.server.host}:${config.server.port}")))
   } yield ()
 
   override def run(args: List[String]): IO[ExitCode] =

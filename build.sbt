@@ -51,12 +51,8 @@ val Dependencies = new {
     "com.ocadotechnology" %% "sttp-oauth2" % Versions.SttpOAuth2
   )
 
-  private val githubGraphQL = Seq(
-    "io.github.er1c" %% "caliban-github-api-client" % Versions.GithubGraphQL
-  )
-
   val appDependencies = 
-    cats ++ catsEffect ++ circe ++ tapir ++ sttp ++ sttpOAuth2 ++ githubGraphQL
+    cats ++ catsEffect ++ circe ++ tapir ++ sttp ++ sttpOAuth2
 }
 
 lazy val root = (project in file("."))

@@ -14,7 +14,7 @@ This application exposes two endpoints:
 
 ### Prerequisites
 
-Before starting this application, you need to register an application in Github, to enable OAuth2 authroization. Follow [Github documentation](https://docs.github.com/en/developers/apps/building-oauth-apps/creating-an-oauth-app) for instructions on how to register an application.
+Before starting this application, you need to register an application in Github, to enable OAuth2 authorization. Follow [Github documentation](https://docs.github.com/en/developers/apps/building-oauth-apps/creating-an-oauth-app) for instructions on how to register an application.
 
 ### Launching
 
